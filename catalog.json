@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Mutual Non-Disclosure Agreement (Cover Page)",
+    "description": "Cover page for the Mutual NDA, capturing the deal-specific terms: purpose, effective date, MNDA term, term of confidentiality, governing law and jurisdiction, modifications, and party details for signature.",
+    "filename": "Mutual-NDA-coverpage.md"
+  },
+  {
+    "name": "Mutual Non-Disclosure Agreement (Standard Terms)",
+    "description": "Standard terms of a mutual NDA that lets both parties share confidential information for a stated purpose, covering use and protection obligations, exceptions, required disclosures, term and return of information.",
+    "filename": "Mutual-NDA.md"
+  },
+  {
+    "name": "Cloud Service Agreement",
+    "description": "Standard terms for selling and buying cloud software (SaaS), covering access and use, restrictions, fees and payment, data, warranties, liability limits, indemnification, and term and termination.",
+    "filename": "CSA.md"
+  },
+  {
+    "name": "Service Level Agreement",
+    "description": "Uptime and support commitments that supplement a cloud service agreement, including target uptime, target response times, how each is calculated, and service credits as the remedy for missed targets.",
+    "filename": "sla.md"
+  },
+  {
+    "name": "AI Addendum",
+    "description": "Addendum to a product agreement that governs AI services, covering use of AI services, restrictions, model training on customer input, ownership of input and output, personal data and AI-specific disclaimers.",
+    "filename": "AI-Addendum.md"
+  },
+  {
+    "name": "Data Processing Agreement",
+    "description": "Terms governing how a provider processes personal data on behalf of a customer as processor or subprocessor, including security measures, subprocessors, data subject requests, breach notification and international transfers.",
+    "filename": "DPA.md"
+  },
+  {
+    "name": "Business Associate Agreement",
+    "description": "HIPAA business associate agreement setting out how a provider may use, disclose and safeguard protected health information (PHI) on behalf of a covered entity customer.",
+    "filename": "BAA.md"
+  },
+  {
+    "name": "Professional Services Agreement",
+    "description": "Standard terms for engaging a provider to perform professional services under statements of work (SOWs), covering deliverables, fees, intellectual property, warranties and liability.",
+    "filename": "psa.md"
+  },
+  {
+    "name": "Software License Agreement",
+    "description": "Standard terms for licensing software that the customer installs and runs on its own systems, covering the license grant, restrictions, fees, support, warranties and liability.",
+    "filename": "Software-License-Agreement.md"
+  },
+  {
+    "name": "Design Partner Agreement",
+    "description": "Agreement for an early-stage design partner program, giving a partner early access to a product in exchange for feedback and participation in the program.",
+    "filename": "design-partner-agreement.md"
+  },
+  {
+    "name": "Pilot Agreement",
+    "description": "Terms for a limited-time pilot or trial of a product so the customer can evaluate it before committing to a full purchase.",
+    "filename": "Pilot-Agreement.md"
+  },
+  {
+    "name": "Partnership Agreement",
+    "description": "Agreement for a business partnership in which each party performs agreed obligations, covering cooperation, payments, trademark use, confidentiality and liability.",
+    "filename": "Partnership-Agreement.md"
+  }
+]
