@@ -9,8 +9,8 @@ A platform for drafting common legal agreements
 
 | Path | What it is |
 |---|---|
-| `frontend/` | Next.js web app (TypeScript, Tailwind). Currently the Mutual NDA creator. |
-| `backend/` | FastAPI service that serves the legal templates from a temporary SQLite database. |
+| `frontend/` | Next.js web app (TypeScript, Tailwind). Currently the Mutual NDA creator: an AI chat beside a live preview of the document. |
+| `backend/` | FastAPI service. Serves the legal templates from a temporary SQLite database and runs the AI chat through the Claude API. |
 | `templates/` | Common Paper agreement templates in Markdown (CC BY 4.0). |
 | `catalog.json` | Name, description and filename of each template. The backend loads it at startup. |
 | `scripts/` | Scripts that start and stop the whole app. |
@@ -20,6 +20,10 @@ A platform for drafting common legal agreements
 Requirements: [Node.js](https://nodejs.org/) 20.9 or later, Python 3.12 or later and
 [uv](https://docs.astral.sh/uv/getting-started/installation/). If uv isn't on your
 PATH, the scripts also accept `pip install uv`.
+
+The Mutual NDA creator is an AI chat powered by Claude, so the backend needs an
+Anthropic API key. Copy `backend/.env.example` to `backend/.env` and set
+`ANTHROPIC_API_KEY`. The `.env` file is git-ignored. Restart the backend after changing it.
 
 Start both services. On first run this also installs their dependencies:
 
@@ -45,6 +49,23 @@ scripts/stop.sh
 
 Logs are written to `.run/`. Set `BACKEND_PORT` or `FRONTEND_PORT` to change the
 default ports (8000 and 3000).
+
+## Running with Docker
+
+Requirements: [Docker](https://docs.docker.com/get-docker/) with Compose, and
+`backend/.env` set up as above. The key is passed to the backend container when it
+starts and is never built into an image.
+
+```bash
+docker compose up --build -d   # build and start both services
+docker compose logs -f         # follow the logs
+docker compose down            # stop
+```
+
+Then open http://localhost:3000. API docs are at http://localhost:8000/docs (only
+reachable from your machine). `BACKEND_PORT` and `FRONTEND_PORT` change the ports here
+too. Stop the local scripts first, since both use the same ports. Run
+`docker compose up --build -d` again after changing code or templates.
 
 ## Development
 

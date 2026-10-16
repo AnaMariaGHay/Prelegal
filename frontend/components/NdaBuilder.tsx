@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { buildCoverPage, defaultNdaData, pdfFileName } from "@/lib/nda";
 import type { Block } from "@/lib/standardTerms";
-import { NdaForm } from "./NdaForm";
+import { NdaChat } from "./NdaChat";
 import { NdaPreview } from "./NdaPreview";
 
-export function NdaBuilder({ terms }: { terms: Block[] }) {
+export function NdaBuilder({ terms, greeting }: { terms: Block[]; greeting: string }) {
   const [data, setData] = useState(defaultNdaData);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +40,8 @@ export function NdaBuilder({ terms }: { terms: Block[] }) {
 
   return (
     <div className="grid flex-1 gap-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-      <div className="lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-2">
-        <NdaForm data={data} onChange={setData} />
+      <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-9rem)]">
+        <NdaChat greeting={greeting} data={data} onDocumentChange={setData} />
       </div>
 
       <div className="space-y-4">

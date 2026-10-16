@@ -1,8 +1,9 @@
 # Prelegal frontend: Mutual NDA creator
 
 A Next.js app that creates a Mutual Non-Disclosure Agreement from the Common Paper
-Mutual NDA template. The user fills in a form, sees the completed agreement update
-live, and downloads it as a PDF.
+Mutual NDA template. The user chats with an AI assistant, which asks about the agreement
+and fills in its fields. The completed agreement updates live beside the chat, and the
+user can download it as a PDF.
 
 ## Running locally
 
@@ -27,10 +28,13 @@ Other scripts: `npm run build` (production build, doesn't need the backend),
 
 ## How it works
 
-- `app/page.tsx` fetches the Standard Terms from the backend (`lib/api.ts`) on each
-  request and streams them in behind a loading message.
+- `app/page.tsx` fetches the Standard Terms and the chat greeting from the backend
+  (`lib/api.ts`) on each request and streams them in behind a loading message.
+- `components/NdaChat.tsx` holds the conversation. Each turn posts the history and the
+  current document to `app/api/chat/mutual-nda/route.ts`, which forwards it to the
+  backend. The backend asks Claude and returns the reply plus the updated document.
 - `lib/standardTerms.ts` parses that markdown into a small document model.
-- `lib/nda.ts` defines the form data and builds the cover page from it. Blank fields
+- `lib/nda.ts` defines the document data and builds the cover page from it. Blank fields
   become highlighted `[placeholders]`.
 - `components/NdaPreview.tsx` (HTML) and `components/NdaPdf.tsx` (react-pdf) both render
   that same model. The PDF code loads only when the user clicks **Download PDF**.

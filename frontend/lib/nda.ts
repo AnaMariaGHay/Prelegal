@@ -22,9 +22,11 @@ export type NdaData = {
 
 const emptyParty: Party = { name: "", title: "", company: "", noticeAddress: "" };
 
-// Defaults mirror the pre-filled choices in templates/Mutual-NDA-coverpage.md.
+// Starting point for the chat. The terms default to the template's pre-filled choices
+// (templates/Mutual-NDA-coverpage.md), which the assistant confirms with the user; the
+// purpose starts blank so the assistant asks about it.
 export const defaultNdaData: NdaData = {
-  purpose: "Evaluating whether to enter into a business relationship with the other party.",
+  purpose: "",
   effectiveDate: "",
   mndaTerm: { kind: "expires", years: 1 },
   confidentialityTerm: { kind: "years", years: 1 },
@@ -55,12 +57,6 @@ export function formatDate(iso: string) {
     month: "long",
     day: "numeric",
   });
-}
-
-export function todayIso() {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 export const COVER_PAGE_INTRO =
