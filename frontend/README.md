@@ -1,10 +1,11 @@
 # Prelegal frontend
 
 A Next.js app that drafts legal agreements from the Common Paper templates. The user
-chats with an AI assistant, which works out which document they need (or suggests the
+signs up or logs in, then chats with an AI assistant, which works out which document they need (or suggests the
 closest supported one), asks about it and fills in its fields. The completed agreement
 updates live beside the chat, and the user can download it as a PDF. Until a document is
-chosen, the supported documents are listed as quick-start buttons.
+chosen, the supported documents are listed as quick-start buttons. Documents are saved
+to the user's account as they go, and listed on **My documents** to reopen or delete.
 
 ## Running locally
 
@@ -29,15 +30,19 @@ Other scripts: `npm run build` (production build, doesn't need the backend),
 
 ## How it works
 
-- `app/page.tsx` fetches the supported documents and the chat greeting from the backend
-  (`lib/api.ts`) on each request and streams them in behind a loading message.
+- Pages: `/` (My documents), `/documents/new`, `/documents/[id]` (reopen a saved
+  document), `/login` and `/signup`. Pages that need the user read the session behind a
+  `<Suspense>` boundary (`lib/session.ts`) and send anyone logged out to `/login`.
+- `app/api/[...path]/route.ts` forwards every `/api/*` request from the browser to the
+  backend, passing the session cookie through in both directions. The backend sets and
+  checks it; the browser never talks to the backend directly.
 - `components/DocumentBuilder.tsx` holds the conversation and the document. Each turn
-  posts the history and the current document to `app/api/chat/route.ts`, which forwards
-  it to the backend. The backend asks Claude and returns the reply plus the updated
-  document, which may now be a different document type.
-- When a document is chosen, the builder loads its Standard Terms through
-  `app/api/documents/[slug]/route.ts`, and `lib/standardTerms.ts` parses that markdown
-  into a small document model.
+  posts the history, the current document and the draft id to `/api/chat`. The backend
+  asks Claude, saves the result to the user's draft, and returns the reply plus the
+  updated document. After the first turn, the URL changes to the new draft's.
+- When a document is chosen, the builder loads its Standard Terms from
+  `/api/documents/[slug]`, and `lib/standardTerms.ts` parses that markdown into a small
+  document model.
 - `lib/documents.ts` defines the document data and builds the cover page from the
   document's spec. Blank required fields become highlighted `[placeholders]`.
 - `components/DocumentPreview.tsx` (HTML) and `components/DocumentPdf.tsx` (react-pdf)

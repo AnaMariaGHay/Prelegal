@@ -52,8 +52,8 @@ def chat_body(*messages: tuple[str, str], document: DocumentState | None = None)
     }
 
 
-def test_chat_turn_selects_document_and_fills_fields(client, fake_claude):
-    response = client.post("/api/chat", json=chat_body(("user", "We sell SaaS to Globex LLC")))
+def test_chat_turn_selects_document_and_fills_fields(user_client, fake_claude):
+    response = user_client.post("/api/chat", json=chat_body(("user", "We sell SaaS to Globex LLC")))
 
     assert response.status_code == 200
     body = response.json()
@@ -66,8 +66,8 @@ def test_chat_turn_selects_document_and_fills_fields(client, fake_claude):
     assert document["parties"][1]["noticeAddress"] == ""  # camelCase, like the frontend
 
 
-def test_first_turn_has_catalog_but_no_standard_terms(client, fake_claude):
-    client.post("/api/chat", json=chat_body(("user", "I need a contract")))
+def test_first_turn_has_catalog_but_no_standard_terms(user_client, fake_claude):
+    user_client.post("/api/chat", json=chat_body(("user", "I need a contract")))
     request = fake_claude.calls[0]
 
     assert len(request["system"]) == 1
@@ -77,9 +77,9 @@ def test_first_turn_has_catalog_but_no_standard_terms(client, fake_claude):
     assert "No document has been chosen yet." in request["messages"][-1]["content"]
 
 
-def test_chat_request_with_selected_document_is_cache_friendly(client, fake_claude):
+def test_chat_request_with_selected_document_is_cache_friendly(user_client, fake_claude):
     document = select_type(DocumentState(), load_specs()["mutual-nda"])
-    client.post(
+    user_client.post(
         "/api/chat",
         json=chat_body(
             ("user", "An NDA please"), ("assistant", "Sure. Who are the parties?"), ("user", "Acme and Globex"),
@@ -104,31 +104,37 @@ def test_chat_request_with_selected_document_is_cache_friendly(client, fake_clau
     assert request["output_format"] is ChatTurn
 
 
-def test_unknown_document_type_is_rejected(client, fake_claude):
+def test_unknown_document_type_is_rejected(user_client, fake_claude):
     body = chat_body(("user", "Hi"))
     body["document"]["type"] = "lease"
-    response = client.post("/api/chat", json=body)
+    response = user_client.post("/api/chat", json=body)
     assert response.status_code == 422
     assert fake_claude.calls == []
 
 
-def test_chat_without_api_key_is_503(client, monkeypatch):
+def test_chat_requires_login(client, fake_claude):
+    response = client.post("/api/chat", json=chat_body(("user", "Hi")))
+    assert response.status_code == 401
+    assert fake_claude.calls == []
+
+
+def test_chat_without_api_key_is_503(user_client, monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
-    response = client.post("/api/chat", json=chat_body(("user", "Hi")))
+    response = user_client.post("/api/chat", json=chat_body(("user", "Hi")))
     assert response.status_code == 503
     assert "backend/.env" in response.json()["detail"]
 
 
-def test_chat_must_end_with_user_message(client, fake_claude):
-    response = client.post("/api/chat", json=chat_body(("user", "Hi"), ("assistant", "Hello")))
+def test_chat_must_end_with_user_message(user_client, fake_claude):
+    response = user_client.post("/api/chat", json=chat_body(("user", "Hi"), ("assistant", "Hello")))
     assert response.status_code == 422
     assert fake_claude.calls == []
 
 
-def test_refusal_is_reported(client, monkeypatch):
+def test_refusal_is_reported(user_client, monkeypatch):
     use_fake(monkeypatch, None, stop_reason="refusal")
-    response = client.post("/api/chat", json=chat_body(("user", "Hi")))
+    response = user_client.post("/api/chat", json=chat_body(("user", "Hi")))
     assert response.status_code == 422
     assert "can't help" in response.json()["detail"]
 

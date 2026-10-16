@@ -34,7 +34,8 @@ coverage.xml
 # Jupyter
 .ipynb_checkpoints/
 
-# Local databases
+# Local databases (backend/data/ holds the persistent SQLite database)
+backend/data/
 *.db
 *.sqlite3
 
