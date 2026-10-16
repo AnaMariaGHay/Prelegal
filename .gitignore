@@ -72,6 +72,9 @@ pnpm-debug.log*
 logs/
 *.log
 
+# Process IDs and logs from scripts/start
+.run/
+
 # ---------- Editors / OS ----------
 .vscode/*
 !.vscode/settings.json

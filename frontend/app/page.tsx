@@ -1,9 +1,10 @@
+import { connection } from "next/server";
+import { Suspense } from "react";
 import { NdaBuilder } from "@/components/NdaBuilder";
-import { loadStandardTerms } from "@/lib/loadStandardTerms";
+import { getTemplate } from "@/lib/api";
+import { parseStandardTerms } from "@/lib/standardTerms";
 
 export default function Home() {
-  const terms = loadStandardTerms();
-
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-100">
       <header className="border-b border-zinc-200 bg-white">
@@ -13,8 +14,28 @@ export default function Home() {
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6">
-        <NdaBuilder terms={terms} />
+        <Suspense fallback={<p className="text-sm text-zinc-600">Loading the Mutual NDA template…</p>}>
+          <MutualNdaBuilder />
+        </Suspense>
       </main>
     </div>
   );
+}
+
+// Fetches the Standard Terms from the backend at request time, streamed in behind the Suspense fallback.
+async function MutualNdaBuilder() {
+  await connection(); // fetch per request, never during the build
+  let markdown: string;
+  try {
+    markdown = (await getTemplate("mutual-nda")).content;
+  } catch (error) {
+    console.error(error);
+    return (
+      <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
+        The Mutual NDA template couldn’t be loaded because the Prelegal backend isn’t reachable. Start it with{" "}
+        <code>scripts/start</code> and refresh the page.
+      </p>
+    );
+  }
+  return <NdaBuilder terms={parseStandardTerms(markdown)} />;
 }
