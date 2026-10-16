@@ -1,8 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { NdaBuilder } from "@/components/NdaBuilder";
-import { getMutualNdaGreeting, getTemplate } from "@/lib/api";
-import { parseStandardTerms } from "@/lib/standardTerms";
+import { DocumentBuilder } from "@/components/DocumentBuilder";
+import { getDocuments, getGreeting } from "@/lib/api";
 
 export default function Home() {
   return (
@@ -10,36 +9,34 @@ export default function Home() {
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-baseline gap-3 px-4 py-4 sm:px-6">
           <span className="text-lg font-bold text-zinc-900">Prelegal</span>
-          <h1 className="text-sm text-zinc-600">Mutual NDA creator</h1>
+          <h1 className="text-sm text-zinc-600">Draft legal agreements with AI</h1>
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6">
-        <Suspense fallback={<p className="text-sm text-zinc-600">Loading the Mutual NDA template…</p>}>
-          <MutualNdaBuilder />
+        <Suspense fallback={<p className="text-sm text-zinc-600">Loading…</p>}>
+          <Builder />
         </Suspense>
       </main>
     </div>
   );
 }
 
-// Fetches the Standard Terms and the chat greeting from the backend at request time,
+// Fetches the supported documents and the chat greeting from the backend at request time,
 // streamed in behind the Suspense fallback.
-async function MutualNdaBuilder() {
+async function Builder() {
   await connection(); // fetch per request, never during the build
-  let markdown: string;
+  let specs: Awaited<ReturnType<typeof getDocuments>>;
   let greeting: string;
   try {
-    const [template, greetingText] = await Promise.all([getTemplate("mutual-nda"), getMutualNdaGreeting()]);
-    markdown = template.content;
-    greeting = greetingText;
+    [specs, greeting] = await Promise.all([getDocuments(), getGreeting()]);
   } catch (error) {
     console.error(error);
     return (
       <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
-        The Mutual NDA template couldn’t be loaded because the Prelegal backend isn’t reachable. Start it with{" "}
+        Prelegal couldn’t load its documents because the backend isn’t reachable. Start it with{" "}
         <code>scripts/start</code> and refresh the page.
       </p>
     );
   }
-  return <NdaBuilder terms={parseStandardTerms(markdown)} greeting={greeting} />;
+  return <DocumentBuilder specs={specs} greeting={greeting} />;
 }

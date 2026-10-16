@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --no-install-project
 
 COPY templates /app/templates
-COPY catalog.json /app/catalog.json
+COPY catalog.json documents.json /app/
 COPY backend/app ./app
 
 RUN useradd --system prelegal

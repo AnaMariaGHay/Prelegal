@@ -4,7 +4,7 @@ import { API_URL } from "@/lib/api";
 // backend address server-side and the browser on a single origin.
 export async function POST(request: Request) {
   try {
-    const response = await fetch(`${API_URL}/api/chat/mutual-nda`, {
+    const response = await fetch(`${API_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: await request.text(),

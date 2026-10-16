@@ -6,4 +6,5 @@
 !backend/app/
 !templates/
 !catalog.json
+!documents.json
 **/__pycache__

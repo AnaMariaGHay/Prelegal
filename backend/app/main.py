@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.chat import GREETING, ChatError, ChatRequest, ChatResponse, run_chat_turn
 from app.config import CATALOG_FILE, TEMPLATES_DIR, has_anthropic_credentials
 from app.db import engine, get_session
+from app.documents import DocumentSpec, load_specs
 from app.models import Template
 from app.seed import reset_and_seed
 
@@ -67,24 +68,47 @@ def get_template(slug: str, session: SessionDep) -> TemplateDetail:
     return TemplateDetail.model_validate(template, from_attributes=True)
 
 
-@app.get("/api/chat/mutual-nda")
-def chat_mutual_nda_start() -> dict[str, str]:
+class DocumentDetail(DocumentSpec):
+    content: str  # the Standard Terms markdown
+
+
+@app.get("/api/documents")
+def list_documents() -> list[DocumentSpec]:
+    """The supported document types, with the fields on each one's cover page."""
+    return list(load_specs().values())
+
+
+@app.get("/api/documents/{slug}")
+def get_document(slug: str, session: SessionDep) -> DocumentDetail:
+    """One document type's spec plus its Standard Terms."""
+    spec = load_specs().get(slug)
+    template = session.get(Template, slug)
+    if spec is None or template is None:
+        raise HTTPException(status_code=404, detail=f"Document '{slug}' not found")
+    return DocumentDetail(**spec.model_dump(), content=template.content)
+
+
+@app.get("/api/chat")
+def chat_start() -> dict[str, str]:
     """The assistant's opening message, shown before the user's first turn."""
     return {"greeting": GREETING}
 
 
-@app.post("/api/chat/mutual-nda")
-async def chat_mutual_nda(request: ChatRequest, session: SessionDep, claude: ClaudeDep) -> ChatResponse:
-    """One chat turn: Claude replies and fills in any Mutual NDA fields the user gave."""
+@app.post("/api/chat")
+async def chat(request: ChatRequest, session: SessionDep, claude: ClaudeDep) -> ChatResponse:
+    """One chat turn: Claude replies, and chooses the document or fills in any fields the user gave."""
     if not has_anthropic_credentials():
         raise HTTPException(
             status_code=503,
             detail="The AI chat isn't set up yet: add ANTHROPIC_API_KEY to backend/.env and restart the backend.",
         )
-    template = session.get(Template, "mutual-nda")
-    if template is None:
-        raise HTTPException(status_code=500, detail="The Mutual NDA template is missing from the database.")
+    standard_terms = None
+    if request.document.type is not None:
+        template = session.get(Template, request.document.type)
+        if request.document.type not in load_specs() or template is None:
+            raise HTTPException(status_code=422, detail=f"Unknown document type '{request.document.type}'.")
+        standard_terms = template.content
     try:
-        return await run_chat_turn(claude, request, template.content, date.today())
+        return await run_chat_turn(claude, request, standard_terms, date.today())
     except ChatError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message) from e
