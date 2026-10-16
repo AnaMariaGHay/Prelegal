@@ -50,6 +50,23 @@ scripts/stop.sh
 Logs are written to `.run/`. Set `BACKEND_PORT` or `FRONTEND_PORT` to change the
 default ports (8000 and 3000).
 
+## Running with Docker
+
+Requirements: [Docker](https://docs.docker.com/get-docker/) with Compose, and
+`backend/.env` set up as above. The key is passed to the backend container when it
+starts and is never built into an image.
+
+```bash
+docker compose up --build -d   # build and start both services
+docker compose logs -f         # follow the logs
+docker compose down            # stop
+```
+
+Then open http://localhost:3000. API docs are at http://localhost:8000/docs (only
+reachable from your machine). `BACKEND_PORT` and `FRONTEND_PORT` change the ports here
+too. Stop the local scripts first, since both use the same ports. Run
+`docker compose up --build -d` again after changing code or templates.
+
 ## Development
 
 - **Backend tests:** `cd backend && uv run pytest`

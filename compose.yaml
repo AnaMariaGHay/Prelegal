@@ -1,0 +1,30 @@
+# Run Prelegal in Docker:  docker compose up --build
+# Needs backend/.env with ANTHROPIC_API_KEY (see backend/.env.example).
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - path: backend/.env
+        required: true
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000" # API docs at /docs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build: frontend
+    environment:
+      PRELEGAL_API_URL: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

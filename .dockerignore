@@ -1,0 +1,9 @@
+# Build context for backend/Dockerfile (the repo root). Allow only what the image needs,
+# so secrets such as backend/.env never reach it.
+*
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/app/
+!templates/
+!catalog.json
+**/__pycache__
