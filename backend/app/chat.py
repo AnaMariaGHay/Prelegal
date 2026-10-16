@@ -1,5 +1,6 @@
-"""AI chat that drafts a Mutual NDA by asking the user about its cover page fields."""
+"""AI chat that works out which document the user needs and drafts it by asking about its fields."""
 
+import json
 from datetime import date
 from typing import Literal
 
@@ -7,81 +8,104 @@ import anthropic
 from pydantic import BaseModel, Field
 
 from app.config import CLAUDE_MODEL
-from app.nda import ChatTurn, NdaDocument, apply_update, missing_fields
+from app.documents import (
+    ChatTurn,
+    DocumentSpec,
+    DocumentState,
+    apply_turn,
+    fields_at_default,
+    load_specs,
+    missing_fields,
+)
 
 # Shown by the frontend as the first assistant message. It is not sent back as part of
 # the history (the API requires the first message to be from the user), so the system
 # prompt tells Claude it has already been said.
 GREETING = (
-    "Hi! I'll help you put together a Mutual Non-Disclosure Agreement. "
-    "To start, who are the two parties? Just the company names is fine for now."
+    "Hi! I'm Prelegal's assistant. I can draft common business agreements, such as NDAs, "
+    "cloud service agreements, data processing agreements and more. What would you like to create?"
 )
 
 INSTRUCTIONS = f"""\
-You are Prelegal's assistant. You help a user complete a Mutual Non-Disclosure Agreement
-(MNDA) based on the Common Paper Mutual NDA (Version 1.0) by chatting with them. The
-document has a Cover Page, whose fields you fill in from the conversation, and fixed
-Standard Terms, which are included below for reference.
+You are Prelegal's assistant. You help a user draft a legal agreement by chatting with
+them. Every document Prelegal supports is based on a Common Paper standard agreement: a
+cover page (called the Cover Page, Order Form or Key Terms), whose fields you fill in
+from the conversation, followed by fixed Standard Terms.
 
-The user can see a live preview of the document next to the chat, and it updates as you
-fill in fields. They have already been greeted with: "{GREETING}"
+The user can see the list of supported documents next to the chat, and once a document is
+chosen, a live preview of it that updates as you fill in fields. They have already been
+greeted with: "{GREETING}"
 
-## Cover Page fields
+## Choosing the document
 
-- Purpose: how Confidential Information may be used. The template's suggested default is
-  "Evaluating whether to enter into a business relationship with the other party."
-- Effective Date: the date the MNDA starts.
-- MNDA Term: either expires a whole number of years after the Effective Date, or
-  continues until terminated.
-- Term of Confidentiality: either a whole number of years after the Effective Date (trade
-  secrets stay protected for as long as they remain trade secrets), or in perpetuity.
-- Governing Law: the US state whose laws govern the MNDA.
-- Jurisdiction: the city or county and state whose courts hear disputes, e.g.
-  "New Castle, DE".
-- MNDA Modifications: optional changes to the Standard Terms. Leave it empty unless the
-  user asks for a change.
-- For each of Party 1 and Party 2: company, the signatory's full name, the signatory's
-  title, and a notice address (an email or postal address).
+- Work out which supported document fits what the user needs. If it's clear, set
+  `document_type` to its slug and start on its fields. If it isn't clear, ask a short
+  question, or suggest the one or two best fits and why.
+- If the user asks for a document Prelegal doesn't support (for example an employment
+  contract, a lease or a one-way NDA), say plainly that Prelegal can't create that, then
+  offer the closest supported document and explain in a sentence how it differs. Only set
+  `document_type` once the user agrees.
+- If the user wants to switch to a different document later, set `document_type` to the
+  new slug. Field values the documents share, and the party details, carry over; check
+  that the parties are still in the right roles.
 
 ## How to run the conversation
 
 - Ask one or two related questions at a time, in plain, friendly language. Keep each
   reply short: a sentence or two plus your question.
-- Work through the missing fields in a natural order: the parties first, then the
-  purpose, dates and terms, then governing law and jurisdiction, then each party's
-  signatory details.
-- Offer the template's typical choices when they help, e.g. "Most MNDAs last 1 year.
-  Does that work, or would you like longer?"
+- Start with the parties (company names and which role each plays), then the business
+  terms, then governing law and courts, then each party's signatory details: the
+  signatory's full name, title, and a notice address (an email or postal address).
+- Offer typical choices from the field's help text when they help, e.g. "Most pilots
+  last 90 days. Does that work?"
 - If the user gives several details at once, take them all.
-- The MNDA Term and Term of Confidentiality start at the template defaults (1 year each),
-  so they never show as missing. Confirm both with the user before you finish.
+- Optional fields can stay blank. Mention them briefly once ("there's also an optional
+  ... if you need it") rather than asking about each one.
+- Some fields start at the template's default value. Confirm them with the user before
+  you finish.
 - When every required field is filled in, say so, briefly summarize the key terms, and
   tell the user they can review the preview and click Download PDF. Then ask whether they
   want to change anything.
-- Answer questions about what the terms mean, using the Standard Terms below. You are not
-  a lawyer and do not give legal advice. If asked whether a choice is right for their
-  situation, explain the trade-off and suggest they check with a lawyer for anything high
-  stakes.
-- Prelegal can only create this Mutual NDA for now. If the user asks for a different
-  kind of document, say that politely and offer to continue with the MNDA.
+- Answer questions about what the terms mean, using the selected document's Standard
+  Terms. You are not a lawyer and do not give legal advice. If asked whether a choice is
+  right for their situation, explain the trade-off and suggest they check with a lawyer
+  for anything high stakes.
 
 ## Filling in fields
 
-Return the fields to change in `updates`:
-- Include only fields the user has stated or clearly confirmed. Never invent names,
-  titles, addresses or dates. Leave everything else null, which means unchanged.
+Return changes in `field_updates` (by field key) and `party_updates`:
+- Include only values the user has stated or clearly confirmed. Never invent names,
+  titles, addresses, dates or amounts.
 - Use the current values in the latest system note to avoid re-asking for fields that are
   already filled in. Update a field again if the user corrects it.
 - Dates are ISO format (YYYY-MM-DD). Resolve words like "today" or "the first of next
   month" using today's date from the system note.
-- Party 1 is the first company the user names, unless they say otherwise.
-- Write governing law as just the state name (e.g. "Delaware") and jurisdiction as the
-  place (e.g. "New Castle, DE"), because the document adds its own wording around them.
+- Party 1 is the document's first party role and party 2 its second, e.g. for a Cloud
+  Service Agreement party 1 is the Provider and party 2 the Customer.
+- Write values so they read well where they appear on the cover page, following the
+  field's help text.
 - Use plain text in `reply`, with no Markdown.
 
-## Standard Terms (for reference)
+## Supported documents
 
 """
+
+
+def describe_spec(spec: DocumentSpec) -> str:
+    lines = [
+        f"### {spec.name} (slug: {spec.slug})",
+        spec.summary,
+        f"Parties: party 1 is {spec.parties[0]}, party 2 is {spec.parties[1]}. Cover page title: {spec.cover_title}.",
+        "Fields:",
+    ]
+    for f in spec.fields:
+        notes = [f.type] + (["optional"] if f.optional else []) + ([f"default: {f.default}"] if f.default else [])
+        lines.append(f"- {f.key}: {f.label} ({', '.join(notes)}). {f.help}")
+    return "\n".join(lines)
+
+
+def catalog_prompt() -> str:
+    return INSTRUCTIONS + "\n\n".join(describe_spec(s) for s in load_specs().values())
 
 
 class ChatMessage(BaseModel):
@@ -91,12 +115,12 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=100)
-    document: NdaDocument
+    document: DocumentState
 
 
 class ChatResponse(BaseModel):
     reply: str
-    document: NdaDocument
+    document: DocumentState
 
 
 class ChatError(Exception):
@@ -108,35 +132,63 @@ class ChatError(Exception):
         self.status_code = status_code
 
 
-def build_system(standard_terms: str) -> list[dict]:
-    # Stable across every request, so it is cached (first breakpoint).
-    return [{"type": "text", "text": INSTRUCTIONS + standard_terms, "cache_control": {"type": "ephemeral"}}]
+def build_system(spec: DocumentSpec | None, standard_terms: str | None) -> list[dict]:
+    # The instructions and document catalog never change, so they are cached first. The
+    # selected document's Standard Terms only change if the user switches documents, so
+    # they get their own cache breakpoint.
+    system = [{"type": "text", "text": catalog_prompt(), "cache_control": {"type": "ephemeral"}}]
+    if spec is not None and standard_terms:
+        system.append(
+            {
+                "type": "text",
+                "text": f"## Standard Terms of the selected document: {spec.name}\n\n{standard_terms}",
+                "cache_control": {"type": "ephemeral"},
+            }
+        )
+    return system
 
 
-def build_messages(request: ChatRequest, today: date) -> list[dict]:
+def state_note(document: DocumentState, spec: DocumentSpec | None, today: date) -> str:
+    lines = [f"Today's date is {today:%A, %B} {today.day}, {today.year} ({today.isoformat()}). Use it for 'today'."]
+    if spec is None:
+        lines.append("No document has been chosen yet.")
+        return "\n".join(lines)
+
+    missing = missing_fields(document, spec)
+    defaults = fields_at_default(document, spec)
+    parties = {
+        f"party {i} ({role})": party.model_dump(by_alias=True)
+        for i, (role, party) in enumerate(zip(spec.parties, document.parties), start=1)
+    }
+    lines += [
+        f"Selected document: {spec.name} (slug: {spec.slug}).",
+        f"Current field values (JSON): {json.dumps(document.fields, ensure_ascii=False)}",
+        f"Current parties (JSON): {json.dumps(parties, ensure_ascii=False)}",
+        f"Still missing: {', '.join(missing) if missing else 'nothing, every required field is filled in'}.",
+    ]
+    if defaults:
+        lines.append(f"Still at the template default (confirm with the user): {', '.join(defaults)}.")
+    return "\n".join(lines)
+
+
+def build_messages(request: ChatRequest, spec: DocumentSpec | None, today: date) -> list[dict]:
     messages: list[dict] = [{"role": m.role, "content": m.content} for m in request.messages]
-    # Second breakpoint on the latest user message, so next turn's request (which repeats
+    # A cache breakpoint on the latest user message, so next turn's request (which repeats
     # this history) reads the conversation so far from the cache.
     last = messages[-1]
     last["content"] = [{"type": "text", "text": last["content"], "cache_control": {"type": "ephemeral"}}]
-
-    missing = missing_fields(request.document)
-    note = (
-        f"Today's date is {today.isoformat()}.\n"
-        f"Current document fields (JSON): {request.document.model_dump_json(by_alias=True)}\n"
-        f"Still missing: {', '.join(missing) if missing else 'nothing, every required field is filled in'}."
-    )
     # Volatile per-turn state goes last, after the cached prefix, as a mid-conversation
     # system message. It is never stored in the history.
-    messages.append({"role": "system", "content": note})
+    messages.append({"role": "system", "content": state_note(request.document, spec, today)})
     return messages
 
 
 async def run_chat_turn(
-    client: anthropic.AsyncAnthropic, request: ChatRequest, standard_terms: str, today: date
+    client: anthropic.AsyncAnthropic, request: ChatRequest, standard_terms: str | None, today: date
 ) -> ChatResponse:
     if request.messages[-1].role != "user":
         raise ChatError("The last message must be from the user.", status_code=422)
+    spec = load_specs().get(request.document.type) if request.document.type else None
 
     try:
         response = await client.beta.messages.parse(
@@ -146,8 +198,8 @@ async def run_chat_turn(
             # On a safety-classifier refusal, retry on Anthropic's recommended fallback model.
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
-            system=build_system(standard_terms),
-            messages=build_messages(request, today),
+            system=build_system(spec, standard_terms),
+            messages=build_messages(request, spec, today),
             output_format=ChatTurn,
         )
     except anthropic.AuthenticationError as e:
@@ -160,9 +212,9 @@ async def run_chat_turn(
         raise ChatError("Couldn't reach the AI service. Check your internet connection and try again.") from e
 
     if response.stop_reason == "refusal":
-        raise ChatError("Sorry, I can't help with that request. Let's continue with the NDA.", 422)
+        raise ChatError("Sorry, I can't help with that request. Let's continue with your document.", 422)
     turn = response.parsed_output
     if turn is None:
         raise ChatError("The AI's response was incomplete. Please try again.")
 
-    return ChatResponse(reply=turn.reply.strip(), document=apply_update(request.document, turn.updates))
+    return ChatResponse(reply=turn.reply.strip(), document=apply_turn(request.document, turn))

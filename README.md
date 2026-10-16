@@ -9,10 +9,11 @@ A platform for drafting common legal agreements
 
 | Path | What it is |
 |---|---|
-| `frontend/` | Next.js web app (TypeScript, Tailwind). Currently the Mutual NDA creator: an AI chat beside a live preview of the document. |
+| `frontend/` | Next.js web app (TypeScript, Tailwind): an AI chat that drafts any supported agreement, beside a live preview of the document. |
 | `backend/` | FastAPI service. Serves the legal templates from a temporary SQLite database and runs the AI chat through the Claude API. |
 | `templates/` | Common Paper agreement templates in Markdown (CC BY 4.0). |
 | `catalog.json` | Name, description and filename of each template. The backend loads it at startup. |
+| `documents.json` | The supported document types: each one's party roles and the fields on its cover page, with help text the AI uses when asking about them. |
 | `scripts/` | Scripts that start and stop the whole app. |
 
 ## Running locally
@@ -21,7 +22,7 @@ Requirements: [Node.js](https://nodejs.org/) 20.9 or later, Python 3.12 or later
 [uv](https://docs.astral.sh/uv/getting-started/installation/). If uv isn't on your
 PATH, the scripts also accept `pip install uv`.
 
-The Mutual NDA creator is an AI chat powered by Claude, so the backend needs an
+The document creator is an AI chat powered by Claude, so the backend needs an
 Anthropic API key. Copy `backend/.env.example` to `backend/.env` and set
 `ANTHROPIC_API_KEY`. The `.env` file is git-ignored. Restart the backend after changing it.
 
@@ -74,3 +75,7 @@ too. Stop the local scripts first, since both use the same ports. Run
 
 The database is temporary. It's rebuilt from `catalog.json` and `templates/` every time
 the backend starts, so to change a template, edit the files and restart.
+
+To change a document's cover page fields, edit `documents.json` and restart the backend.
+The backend tests check that every term a template links to its cover page (such as
+"Subscription Period") has a matching field or party role.

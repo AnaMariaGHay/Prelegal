@@ -1,61 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { NdaData } from "@/lib/nda";
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 type Props = {
   greeting: string;
-  data: NdaData;
-  onDocumentChange: (data: NdaData) => void;
+  messages: ChatMessage[];
+  sending: boolean;
+  error: string | null;
+  onSend: (text: string) => void;
+  onRetry: () => void;
 };
 
-/** Freeform chat with the AI, which asks about the NDA and fills in its fields. */
-export function NdaChat({ greeting, data, onDocumentChange }: Props) {
-  // The conversation sent to the backend. The greeting is shown but not sent: the
-  // backend already knows it, and the API requires the first message to be from the user.
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+/** Freeform chat with the AI, which works out the document and fills in its fields. */
+export function Chat({ greeting, messages, sending, error, onSend, onRetry }: Props) {
   const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, sending, error]);
 
-  async function sendTurn(history: ChatMessage[]) {
-    setSending(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/chat/mutual-nda", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, document: data }),
-      });
-      const body = await response.json().catch(() => null);
-      if (!response.ok) {
-        const detail = typeof body?.detail === "string" ? body.detail : null;
-        throw new Error(detail ?? `Something went wrong (error ${response.status}). Please try again.`);
-      }
-      setMessages([...history, { role: "assistant", content: body.reply }]);
-      onDocumentChange(body.document);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
-    } finally {
-      setSending(false);
-    }
-  }
-
   function submit(e?: React.FormEvent) {
     e?.preventDefault();
     const text = input.trim();
     if (!text || sending) return;
-    const history: ChatMessage[] = [...messages, { role: "user", content: text }];
-    setMessages(history);
     setInput("");
-    void sendTurn(history);
+    onSend(text);
   }
 
   const lastIsUnanswered = messages.at(-1)?.role === "user";
@@ -75,8 +47,8 @@ export function NdaChat({ greeting, data, onDocumentChange }: Props) {
         {error && (
           <div role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">
             <p>{error}</p>
-            {lastIsUnanswered && (
-              <button type="button" onClick={() => sendTurn(messages)} className="mt-2 font-semibold underline">
+            {lastIsUnanswered && !sending && (
+              <button type="button" onClick={onRetry} className="mt-2 font-semibold underline">
                 Try again
               </button>
             )}

@@ -15,6 +15,8 @@ DATABASE_URL = os.environ.get("PRELEGAL_DATABASE_URL", f"sqlite:///{BACKEND_DIR 
 
 TEMPLATES_DIR = Path(os.environ.get("PRELEGAL_TEMPLATES_DIR", REPO_DIR / "templates"))
 CATALOG_FILE = Path(os.environ.get("PRELEGAL_CATALOG_FILE", REPO_DIR / "catalog.json"))
+# The supported document types and their cover page fields.
+DOCUMENTS_FILE = Path(os.environ.get("PRELEGAL_DOCUMENTS_FILE", REPO_DIR / "documents.json"))
 
 CLAUDE_MODEL = os.environ.get("PRELEGAL_CLAUDE_MODEL", "claude-opus-5-5")
 
