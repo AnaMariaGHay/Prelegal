@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { NdaBuilder } from "@/components/NdaBuilder";
-import { getTemplate } from "@/lib/api";
+import { getMutualNdaGreeting, getTemplate } from "@/lib/api";
 import { parseStandardTerms } from "@/lib/standardTerms";
 
 export default function Home() {
@@ -22,12 +22,16 @@ export default function Home() {
   );
 }
 
-// Fetches the Standard Terms from the backend at request time, streamed in behind the Suspense fallback.
+// Fetches the Standard Terms and the chat greeting from the backend at request time,
+// streamed in behind the Suspense fallback.
 async function MutualNdaBuilder() {
   await connection(); // fetch per request, never during the build
   let markdown: string;
+  let greeting: string;
   try {
-    markdown = (await getTemplate("mutual-nda")).content;
+    const [template, greetingText] = await Promise.all([getTemplate("mutual-nda"), getMutualNdaGreeting()]);
+    markdown = template.content;
+    greeting = greetingText;
   } catch (error) {
     console.error(error);
     return (
@@ -37,5 +41,5 @@ async function MutualNdaBuilder() {
       </p>
     );
   }
-  return <NdaBuilder terms={parseStandardTerms(markdown)} />;
+  return <NdaBuilder terms={parseStandardTerms(markdown)} greeting={greeting} />;
 }
