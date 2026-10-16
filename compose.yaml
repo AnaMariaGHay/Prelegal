@@ -8,6 +8,8 @@ services:
     env_file:
       - path: backend/.env
         required: true
+    volumes:
+      - prelegal-data:/data # the database: accounts and saved documents
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000" # API docs at /docs
     healthcheck:
@@ -28,3 +30,6 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  prelegal-data:

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   buildCoverPage,
@@ -18,11 +20,20 @@ import { DocumentPreview } from "./DocumentPreview";
 
 type Terms = { slug: string; blocks: Block[] } | { slug: string; error: string };
 
-export function DocumentBuilder({ specs, greeting }: { specs: DocumentSpec[]; greeting: string }) {
-  const [doc, setDoc] = useState<DocumentState>(emptyDocument);
+type Props = {
+  specs: DocumentSpec[];
+  greeting: string;
+  /** A saved document to continue. Without one, a new document is saved on the first chat turn. */
+  draft?: { id: string; document: DocumentState; messages: ChatMessage[] };
+};
+
+export function DocumentBuilder({ specs, greeting, draft }: Props) {
+  const router = useRouter();
+  const [draftId, setDraftId] = useState(draft?.id ?? null);
+  const [doc, setDoc] = useState<DocumentState>(draft?.document ?? emptyDocument);
   // The conversation sent to the backend. The greeting is shown but not sent: the backend
   // already knows it, and the API requires the first message to be from the user.
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(draft?.messages ?? []);
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [terms, setTerms] = useState<Terms | null>(null);
@@ -57,15 +68,25 @@ export function DocumentBuilder({ specs, greeting }: { specs: DocumentSpec[]; gr
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, document }),
+        body: JSON.stringify({ messages: history, document, draftId }),
       });
       const body = await response.json().catch(() => null);
+      if (response.status === 401) {
+        router.push("/login"); // the session expired
+        return;
+      }
       if (!response.ok) {
         const detail = typeof body?.detail === "string" ? body.detail : null;
         throw new Error(detail ?? `Something went wrong (error ${response.status}). Please try again.`);
       }
       setMessages([...history, { role: "assistant", content: body.reply }]);
       setDoc(body.document);
+      if (body.draftId !== draftId) {
+        // The first turn saved a new document: give it its own URL, so a refresh or the
+        // back button returns to it.
+        setDraftId(body.draftId);
+        window.history.replaceState(null, "", `/documents/${body.draftId}`);
+      }
     } catch (e) {
       setChatError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
@@ -83,14 +104,6 @@ export function DocumentBuilder({ specs, greeting }: { specs: DocumentSpec[]; gr
     const next = selectType(doc, chosen);
     setDoc(next);
     send(`I'd like to create a ${chosen.name}.`, next);
-  }
-
-  function startOver() {
-    if (messages.length > 0 && !window.confirm("Start over? This clears the conversation and the document.")) return;
-    setDoc(emptyDocument);
-    setMessages([]);
-    setChatError(null);
-    setDownloadError(null);
   }
 
   const cover = spec ? buildCoverPage(spec, doc) : null;
@@ -149,13 +162,12 @@ export function DocumentBuilder({ specs, greeting }: { specs: DocumentSpec[]; gr
                 : `${missing} field${missing === 1 ? "" : "s"} still to fill in (highlighted).`}
             </p>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={startOver}
+              <Link
+                href="/documents/new"
                 className="rounded-md px-3 py-2 text-sm font-semibold text-zinc-700 ring-1 ring-zinc-300 hover:bg-zinc-50"
               >
-                Start over
-              </button>
+                New document
+              </Link>
               <button
                 type="button"
                 onClick={download}
