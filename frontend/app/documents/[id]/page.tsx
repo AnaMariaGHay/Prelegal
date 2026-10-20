@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BackendDown } from "@/components/BackendDown";
 import { DocumentBuilder } from "@/components/DocumentBuilder";
 import { getDocuments, getDraft, getGreeting } from "@/lib/api";
 import { requireUser } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Document" };
 
 export default function DraftPage({ params }: PageProps<"/documents/[id]">) {
   return (

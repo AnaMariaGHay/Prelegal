@@ -6,7 +6,7 @@ import type { Block, Run } from "@/lib/standardTerms";
 // model. Uses the built-in Times fonts, so no font files are needed.
 
 const styles = StyleSheet.create({
-  page: { paddingVertical: 60, paddingHorizontal: 64, fontFamily: "Times-Roman", fontSize: 11, lineHeight: 1.4 },
+  page: { paddingTop: 60, paddingBottom: 64, paddingHorizontal: 64, fontFamily: "Times-Roman", fontSize: 11, lineHeight: 1.4 },
   title: { fontFamily: "Times-Bold", fontSize: 18, textAlign: "center" },
   subtitle: { fontSize: 9, textAlign: "center", color: "#555", marginBottom: 14 },
   section: { marginTop: 8 },
@@ -24,7 +24,18 @@ const styles = StyleSheet.create({
   paragraph: { marginTop: 7 },
   bold: { fontFamily: "Times-Bold" },
   link: { color: "#075985" },
+  footer: { position: "absolute", bottom: 28, left: 64, right: 64, fontSize: 8, color: "#555", textAlign: "center" },
 });
+
+function PageFooter({ title }: { title: string }) {
+  return (
+    <Text
+      style={styles.footer}
+      fixed
+      render={({ pageNumber, totalPages }) => `${title} · Page ${pageNumber} of ${totalPages}`}
+    />
+  );
+}
 
 function Value({ value }: { value: FieldValue }) {
   return <Text style={value.missing ? styles.missing : undefined}>{value.text}</Text>;
@@ -93,6 +104,7 @@ export function DocumentPdf({ cover, terms, anchorFor }: Props) {
           </View>
           <Text style={styles.small}>{cover.attribution}</Text>
         </View>
+        <PageFooter title={cover.title} />
       </Page>
 
       <Page size="LETTER" style={styles.page}>
@@ -118,6 +130,7 @@ export function DocumentPdf({ cover, terms, anchorFor }: Props) {
             </Text>
           );
         })}
+        <PageFooter title={cover.title} />
       </Page>
     </Document>
   );

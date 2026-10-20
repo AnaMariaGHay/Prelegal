@@ -3,7 +3,7 @@
 A Next.js app that drafts legal agreements from the Common Paper templates. The user
 signs up or logs in, then chats with an AI assistant, which works out which document they need (or suggests the
 closest supported one), asks about it and fills in its fields. The completed agreement
-updates live beside the chat, and the user can download it as a PDF. Until a document is
+updates live beside the chat, and the user can download it as a PDF or Word file. Until a document is
 chosen, the supported documents are listed as quick-start buttons. Documents are saved
 to the user's account as they go, and listed on **My documents** to reopen or delete.
 
@@ -26,7 +26,7 @@ different address. If it isn't reachable, the page shows an error message instea
 chat.
 
 Other scripts: `npm run build` (production build, doesn't need the backend),
-`npm start` (serve the build) and `npm run lint`.
+`npm start` (serve the build), `npm run lint` and `npm test` (Vitest unit tests).
 
 ## How it works
 
@@ -45,9 +45,11 @@ Other scripts: `npm run build` (production build, doesn't need the backend),
   document model.
 - `lib/documents.ts` defines the document data and builds the cover page from the
   document's spec. Blank required fields become highlighted `[placeholders]`.
-- `components/DocumentPreview.tsx` (HTML) and `components/DocumentPdf.tsx` (react-pdf)
-  both render that same model. The PDF code loads only when the user clicks
-  **Download PDF**.
+- `components/DocumentPreview.tsx` (HTML), `components/DocumentPdf.tsx` (react-pdf) and
+  `lib/docx.ts` (Word, with the `docx` library) all render that same model. The PDF and
+  Word code loads only when the user clicks a download button.
+- `lib/ui.ts` holds the shared Tailwind classes for buttons, cards and messages.
+  `app/error.tsx` and `app/not-found.tsx` are the error and 404 pages.
 
 Templates are from [Common Paper](https://github.com/CommonPaper) under CC BY 4.0. See
 `../templates/LICENSE.txt`.

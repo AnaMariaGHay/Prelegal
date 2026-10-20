@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Prelegal – Draft legal agreements",
+  title: { default: "Prelegal – Draft legal agreements", template: "%s · Prelegal" },
   description: "Draft common legal agreements from Common Paper templates by chatting with an AI assistant.",
 };
 

@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { DraftList } from "@/components/DraftList";
 import { getDrafts } from "@/lib/api";
 import { requireUser } from "@/lib/session";
+import { ui } from "@/lib/ui";
+
+// The title template in the root layout only applies to nested pages, so spell it out here.
+export const metadata: Metadata = { title: { absolute: "My documents · Prelegal" } };
 
 export default function Home() {
   return (
@@ -11,12 +16,12 @@ export default function Home() {
         <h1 className="text-2xl font-semibold text-zinc-900">My documents</h1>
         <Link
           href="/documents/new"
-          className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-800"
+          className={ui.primaryButton}
         >
           New document
         </Link>
       </div>
-      <Suspense fallback={<p className="mt-6 text-sm text-zinc-600">Loading your documents…</p>}>
+      <Suspense fallback={<p className={`mt-6 ${ui.muted}`}>Loading your documents…</p>}>
         <Documents />
       </Suspense>
     </div>
@@ -32,7 +37,7 @@ async function Documents() {
   } catch (error) {
     console.error(error);
     return (
-      <p role="alert" className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
+      <p role="alert" className={`${ui.errorBox} mt-6`}>
         Your documents couldn’t be loaded. Please refresh the page.
       </p>
     );

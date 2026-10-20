@@ -1,15 +1,16 @@
 import type { DocumentSpec } from "@/lib/documents";
+import { ui } from "@/lib/ui";
 
 type Props = { specs: DocumentSpec[]; disabled: boolean; onChoose: (spec: DocumentSpec) => void };
 
 /** The supported documents, as quick-start buttons shown until a document is chosen. */
 export function DocumentPicker({ specs, disabled, onChoose }: Props) {
   return (
-    <section aria-labelledby="picker-heading" className="rounded-lg bg-white p-5 ring-1 ring-zinc-200 sm:p-6">
+    <section aria-labelledby="picker-heading" className={`${ui.card} p-5 sm:p-6`}>
       <h2 id="picker-heading" className="text-lg font-semibold text-zinc-900">
         Choose a document
       </h2>
-      <p className="mt-1 text-sm text-zinc-600">Or describe what you need in the chat, and the assistant will suggest one.</p>
+      <p className={`mt-1 ${ui.muted}`}>Or describe what you need in the chat, and the assistant will suggest one.</p>
       <ul className="mt-5 grid gap-3 sm:grid-cols-2">
         {specs.map((spec) => (
           <li key={spec.slug}>

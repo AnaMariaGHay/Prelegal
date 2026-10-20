@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { BackendDown } from "@/components/BackendDown";
 import { DocumentBuilder } from "@/components/DocumentBuilder";
 import { getDocuments, getGreeting } from "@/lib/api";
 import { requireUser } from "@/lib/session";
+
+export const metadata: Metadata = { title: "New document" };
 
 export default function NewDocumentPage() {
   return (

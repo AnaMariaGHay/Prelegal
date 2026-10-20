@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ui } from "@/lib/ui";
 
 type Props = { mode: "login" | "signup" };
 
@@ -37,7 +38,7 @@ export function AuthForm({ mode }: Props) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-sm rounded-lg bg-white p-6 ring-1 ring-zinc-200 sm:p-8">
+    <div className={`${ui.card} mx-auto w-full max-w-sm p-6 sm:p-8`}>
       <h1 className="text-xl font-semibold text-zinc-900">{isSignup ? "Create your account" : "Log in"}</h1>
       <p className="mt-1 text-sm text-zinc-600">
         {isSignup ? "Your documents are saved to your account and private to you." : "Welcome back to Prelegal."}
@@ -53,7 +54,7 @@ export function AuthForm({ mode }: Props) {
             type="email"
             autoComplete="email"
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600"
+            className={`${ui.input} mt-1`}
           />
         </div>
         <div>
@@ -68,7 +69,7 @@ export function AuthForm({ mode }: Props) {
             required
             minLength={isSignup ? 8 : undefined}
             aria-describedby={isSignup ? "password-hint" : undefined}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600"
+            className={`${ui.input} mt-1`}
           />
           {isSignup && (
             <p id="password-hint" className="mt-1 text-xs text-zinc-500">
@@ -77,14 +78,14 @@ export function AuthForm({ mode }: Props) {
           )}
         </div>
         {error && (
-          <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">
+          <p role="alert" className={ui.errorBox}>
             {error}
           </p>
         )}
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+          className={`${ui.primaryButton} w-full`}
         >
           {pending ? "Please wait…" : isSignup ? "Sign up" : "Log in"}
         </button>
