@@ -4,22 +4,35 @@ from functools import cache
 from typing import Annotated
 
 import anthropic
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import drafts
+from app.auth import (
+    Credentials,
+    CurrentUser,
+    SignupRequest,
+    UserOut,
+    authenticate,
+    end_session,
+    hash_password,
+    start_session,
+)
 from app.chat import GREETING, ChatError, ChatRequest, ChatResponse, run_chat_turn
 from app.config import CATALOG_FILE, TEMPLATES_DIR, has_anthropic_credentials
-from app.db import engine, get_session
+from app.db import engine, get_session, migrate
 from app.documents import DocumentSpec, load_specs
-from app.models import Template
-from app.seed import reset_and_seed
+from app.models import Template, User
+from app.seed import refresh_templates
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    reset_and_seed(engine, CATALOG_FILE, TEMPLATES_DIR)
+    migrate()
+    refresh_templates(engine, CATALOG_FILE, TEMPLATES_DIR)
     yield
 
 
@@ -88,6 +101,65 @@ def get_document(slug: str, session: SessionDep) -> DocumentDetail:
     return DocumentDetail(**spec.model_dump(), content=template.content)
 
 
+# --- Accounts ---
+
+
+@app.post("/api/auth/signup", status_code=201)
+def signup(credentials: SignupRequest, response: Response, session: SessionDep) -> UserOut:
+    """Create an account and log it in."""
+    user = User(email=credentials.email, password_hash=hash_password(credentials.password))
+    session.add(user)
+    try:
+        session.flush()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="An account with this email already exists. Try logging in.")
+    start_session(session, user, response)
+    return UserOut(id=user.id, email=user.email)
+
+
+@app.post("/api/auth/login")
+def login(credentials: Credentials, response: Response, session: SessionDep) -> UserOut:
+    user = authenticate(session, credentials.email, credentials.password)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    start_session(session, user, response)
+    return UserOut(id=user.id, email=user.email)
+
+
+@app.post("/api/auth/logout", status_code=204)
+def logout(response: Response, session: SessionDep, prelegal_session: Annotated[str | None, Cookie()] = None) -> None:
+    end_session(session, prelegal_session, response)
+
+
+@app.get("/api/auth/me")
+def me(user: CurrentUser) -> UserOut:
+    return UserOut(id=user.id, email=user.email)
+
+
+# --- The logged-in user's documents ---
+
+
+@app.get("/api/drafts")
+def list_drafts(user: CurrentUser, session: SessionDep) -> list[drafts.DraftSummary]:
+    """The user's documents, most recently updated first."""
+    return [drafts.summarize(d) for d in drafts.list_for(session, user)]
+
+
+@app.get("/api/drafts/{draft_id}")
+def get_draft(draft_id: str, user: CurrentUser, session: SessionDep) -> drafts.DraftDetail:
+    return drafts.detail(drafts.get_owned(session, user, draft_id))
+
+
+@app.delete("/api/drafts/{draft_id}", status_code=204)
+def delete_draft(draft_id: str, user: CurrentUser, session: SessionDep) -> None:
+    session.delete(drafts.get_owned(session, user, draft_id))
+    session.commit()
+
+
+# --- AI chat ---
+
+
 @app.get("/api/chat")
 def chat_start() -> dict[str, str]:
     """The assistant's opening message, shown before the user's first turn."""
@@ -95,8 +167,12 @@ def chat_start() -> dict[str, str]:
 
 
 @app.post("/api/chat")
-async def chat(request: ChatRequest, session: SessionDep, claude: ClaudeDep) -> ChatResponse:
-    """One chat turn: Claude replies, and chooses the document or fills in any fields the user gave."""
+async def chat(request: ChatRequest, user: CurrentUser, session: SessionDep, claude: ClaudeDep) -> ChatResponse:
+    """One chat turn: Claude replies, and chooses the document or fills in any fields the user gave.
+
+    The conversation and document are saved to the user's draft (created on the first turn).
+    """
+    draft = drafts.get_owned(session, user, request.draft_id) if request.draft_id else None
     if not has_anthropic_credentials():
         raise HTTPException(
             status_code=503,
@@ -109,6 +185,10 @@ async def chat(request: ChatRequest, session: SessionDep, claude: ClaudeDep) -> 
             raise HTTPException(status_code=422, detail=f"Unknown document type '{request.document.type}'.")
         standard_terms = template.content
     try:
-        return await run_chat_turn(claude, request, standard_terms, date.today())
+        result = await run_chat_turn(claude, request, standard_terms, date.today())
     except ChatError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message) from e
+
+    history = [*request.messages, drafts.ChatMessage(role="assistant", content=result.reply)]
+    draft = drafts.save(session, user, draft, result.document, history)
+    return result.model_copy(update={"draft_id": draft.id})

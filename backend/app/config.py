@@ -10,8 +10,16 @@ REPO_DIR = BACKEND_DIR.parent
 # Variables already set in the environment take precedence.
 load_dotenv(BACKEND_DIR / ".env")
 
-# Temporary database: a local SQLite file, rebuilt from the templates on every startup.
-DATABASE_URL = os.environ.get("PRELEGAL_DATABASE_URL", f"sqlite:///{BACKEND_DIR / 'prelegal.db'}")
+# Persistent database: a local SQLite file by default. Any SQLAlchemy URL works, e.g.
+# postgresql+psycopg://user:pass@host/prelegal (with the driver installed). The schema is
+# migrated on startup (see migrations/).
+DATA_DIR = BACKEND_DIR / "data"
+DATABASE_URL = os.environ.get("PRELEGAL_DATABASE_URL", f"sqlite:///{(DATA_DIR / 'prelegal.db').as_posix()}")
+
+# Login sessions last this long. Set PRELEGAL_SECURE_COOKIES=true when serving over HTTPS,
+# so the session cookie is never sent over plain HTTP.
+SESSION_DAYS = int(os.environ.get("PRELEGAL_SESSION_DAYS", "30"))
+SECURE_COOKIES = os.environ.get("PRELEGAL_SECURE_COOKIES", "false").lower() in ("1", "true", "yes")
 
 TEMPLATES_DIR = Path(os.environ.get("PRELEGAL_TEMPLATES_DIR", REPO_DIR / "templates"))
 CATALOG_FILE = Path(os.environ.get("PRELEGAL_CATALOG_FILE", REPO_DIR / "catalog.json"))

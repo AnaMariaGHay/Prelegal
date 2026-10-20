@@ -4,6 +4,8 @@
 !backend/pyproject.toml
 !backend/uv.lock
 !backend/app/
+!backend/alembic.ini
+!backend/migrations/
 !templates/
 !catalog.json
 !documents.json

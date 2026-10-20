@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.config import CLAUDE_MODEL
 from app.documents import (
+    CamelModel,
     ChatTurn,
     DocumentSpec,
     DocumentState,
@@ -110,17 +111,20 @@ def catalog_prompt() -> str:
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=4000)
+    # Generous, since assistant replies are sent back as history; the chat box caps user input at 4,000.
+    content: str = Field(min_length=1, max_length=16000)
 
 
-class ChatRequest(BaseModel):
+class ChatRequest(CamelModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=100)
     document: DocumentState
+    draft_id: str | None = None  # the saved document this chat belongs to; None starts a new one
 
 
-class ChatResponse(BaseModel):
+class ChatResponse(CamelModel):
     reply: str
     document: DocumentState
+    draft_id: str = ""
 
 
 class ChatError(Exception):

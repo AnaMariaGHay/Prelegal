@@ -10,7 +10,7 @@ A platform for drafting common legal agreements
 | Path | What it is |
 |---|---|
 | `frontend/` | Next.js web app (TypeScript, Tailwind): an AI chat that drafts any supported agreement, beside a live preview of the document. |
-| `backend/` | FastAPI service. Serves the legal templates from a temporary SQLite database and runs the AI chat through the Claude API. |
+| `backend/` | FastAPI service: user accounts, saved documents, the legal templates and the AI chat (through the Claude API). Data is stored in SQLite, with Alembic migrations in `backend/migrations/`. |
 | `templates/` | Common Paper agreement templates in Markdown (CC BY 4.0). |
 | `catalog.json` | Name, description and filename of each template. The backend loads it at startup. |
 | `documents.json` | The supported document types: each one's party roles and the fields on its cover page, with help text the AI uses when asking about them. |
@@ -36,7 +36,8 @@ scripts/start.sh          # macOS, Linux, Git Bash
 .\scripts\start.ps1       # Windows PowerShell
 ```
 
-Then open http://localhost:3000. API docs are at http://localhost:8000/docs.
+Then open http://localhost:3000, create an account and start a document. API docs are at
+http://localhost:8000/docs.
 
 Stop both services:
 
@@ -68,13 +69,36 @@ reachable from your machine). `BACKEND_PORT` and `FRONTEND_PORT` change the port
 too. Stop the local scripts first, since both use the same ports. Run
 `docker compose up --build -d` again after changing code or templates.
 
+Accounts and documents are stored in the `prelegal-data` Docker volume, so they survive
+`docker compose down` and rebuilds. `docker compose down -v` deletes the volume and
+everything in it.
+
 ## Development
 
 - **Backend tests:** `cd backend && uv run pytest`
 - **Frontend checks:** `cd frontend && npm run lint && npm run build`
 
-The database is temporary. It's rebuilt from `catalog.json` and `templates/` every time
-the backend starts, so to change a template, edit the files and restart.
+## Accounts and data
+
+- Users sign up with an email and password (at least 8 characters). Passwords are hashed
+  with Argon2. Logging in creates a server-side session, kept in an httpOnly cookie for
+  30 days (`PRELEGAL_SESSION_DAYS`). Logging out ends it on the server.
+- Each user sees only their own documents. A document is saved on its first chat turn
+  and after every turn after that, together with its conversation, so it can be reopened
+  and continued from **My documents**.
+- The database is a SQLite file, `backend/data/prelegal.db` (git-ignored). Set
+  `PRELEGAL_DATABASE_URL` to use another database, e.g. Postgres, with its driver
+  installed.
+- The backend applies any pending migrations on startup. After changing
+  `backend/app/models.py`, create a migration with
+  `cd backend && uv run alembic revision --autogenerate -m "describe the change"`, and
+  review it before committing.
+- When serving over HTTPS, set `PRELEGAL_SECURE_COOKIES=true` so the session cookie is
+  never sent over plain HTTP.
+
+Templates are not stored as user data: the templates table is reloaded from
+`catalog.json` and `templates/` every time the backend starts, so to change a template,
+edit the files and restart.
 
 To change a document's cover page fields, edit `documents.json` and restart the backend.
 The backend tests check that every term a template links to its cover page (such as

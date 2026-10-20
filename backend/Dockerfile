@@ -9,8 +9,9 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
     PATH="/app/backend/.venv/bin:$PATH" \
-    # The database is temporary and rebuilt on startup, so keep it somewhere writable.
-    PRELEGAL_DATABASE_URL="sqlite:////tmp/prelegal.db"
+    # Users and their documents live here. compose.yaml mounts a volume on /data so they
+    # survive restarts and rebuilds.
+    PRELEGAL_DATABASE_URL="sqlite:////data/prelegal.db"
 
 WORKDIR /app/backend
 
@@ -21,9 +22,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY templates /app/templates
 COPY catalog.json documents.json /app/
+COPY backend/alembic.ini ./
+COPY backend/migrations ./migrations
 COPY backend/app ./app
 
-RUN useradd --system prelegal
+RUN useradd --system prelegal && mkdir /data && chown prelegal /data
 USER prelegal
 
 EXPOSE 8000
