@@ -1,27 +1,21 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useFormStatus } from "react-dom";
+import { logout } from "@/lib/authActions";
 import { ui } from "@/lib/ui";
 
 export function LogoutButton() {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
-
-  async function logout() {
-    setPending(true);
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
-    router.push("/login");
-    router.refresh();
-  }
-
   return (
-    <button
-      type="button"
-      onClick={logout}
-      disabled={pending}
-      className={`${ui.secondaryButton} px-3 py-1.5`}
-    >
+    <form action={logout}>
+      <SubmitButton />
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className={`${ui.secondaryButton} px-3 py-1.5`}>
       {pending ? "Logging out…" : "Log out"}
     </button>
   );

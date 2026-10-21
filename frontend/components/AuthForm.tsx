@@ -1,41 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useActionState } from "react";
+import { login, signup } from "@/lib/authActions";
 import { ui } from "@/lib/ui";
 
 type Props = { mode: "login" | "signup" };
 
 /** Log in or sign up with an email and password. */
 export function AuthForm({ mode }: Props) {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const isSignup = mode === "signup";
-
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setPending(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/auth/${mode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(errorMessage(response.status, body));
-      }
-      router.push("/");
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
-      setPending(false);
-    }
-  }
+  // The action redirects on success; otherwise it returns the error to show. React tracks
+  // `pending` for the submission, so it can't be left stuck after a navigation.
+  const [state, action, pending] = useActionState(isSignup ? signup : login, undefined);
+  const error = state?.error;
 
   return (
     <div className={`${ui.card} mx-auto w-full max-w-sm p-6 sm:p-8`}>
@@ -43,7 +21,7 @@ export function AuthForm({ mode }: Props) {
       <p className="mt-1 text-sm text-zinc-600">
         {isSignup ? "Your documents are saved to your account and private to you." : "Welcome back to Prelegal."}
       </p>
-      <form onSubmit={submit} className="mt-6 space-y-4">
+      <form action={action} className="mt-6 space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-zinc-800">
             Email
@@ -54,6 +32,7 @@ export function AuthForm({ mode }: Props) {
             type="email"
             autoComplete="email"
             required
+            defaultValue={state?.email}
             className={`${ui.input} mt-1`}
           />
         </div>
@@ -98,12 +77,4 @@ export function AuthForm({ mode }: Props) {
       </p>
     </div>
   );
-}
-
-function errorMessage(status: number, body: { detail?: unknown } | null) {
-  if (typeof body?.detail === "string") return body.detail;
-  // FastAPI validation errors: a list of {msg} objects.
-  if (Array.isArray(body?.detail) && typeof body.detail[0]?.msg === "string")
-    return body.detail[0].msg.replace(/^Value error, /, "");
-  return `Something went wrong (error ${status}). Please try again.`;
 }
