@@ -1,9 +1,38 @@
 # Prelegal
 A platform for drafting common legal agreements
 
+Prelegal drafts business agreements from the [Common Paper](https://commonpaper.com)
+standard templates. You describe what you need to an AI assistant, which picks the right
+agreement (or suggests the closest one Prelegal supports), asks about the details, and
+fills in the document as you go. You can download the result as a PDF or Word file.
+
+Supported documents: Mutual NDA, Cloud Service Agreement, Service Level Agreement, AI
+Addendum, Data Processing Agreement, Business Associate Agreement, Professional Services
+Agreement, Software License Agreement, Design Partner Agreement, Pilot Agreement and
+Partnership Agreement.
+
 ## Status
 
-🚧 **This project is a work in progress.** Completion is targeted for **October 22, 2026** (one week from October 15, 2026).
+V1 is feature complete, targeted for **October 22, 2026**. See [Known limitations](#known-limitations).
+
+## Using Prelegal
+
+1. **Create an account** with your email and a password (at least 8 characters), or log in.
+2. **Start a document.** On **My documents**, click **New document**. Either describe what
+   you need in the chat ("we're letting a customer trial our product for 60 days"), or
+   click one of the documents listed next to it.
+3. **Answer the assistant's questions.** It asks about the parties, the business terms,
+   governing law and the signatories. The document updates beside the chat, and fields
+   still to fill in are highlighted. You can give several details at once, correct
+   anything later ("make it 2 years instead"), ask what a term means, or switch to a
+   different document. On a phone, use the **Chat** and **Document** tabs to switch views.
+4. **Download it** as a PDF or Word file once every field is filled in. The Word file is
+   handy for edits or redlines with the other party.
+5. **Come back any time.** Your documents are saved after every message. Reopen one from
+   **My documents** to continue where you left off, or delete it.
+
+Prelegal is not a law firm and the assistant doesn't give legal advice. Have a lawyer
+review anything high stakes.
 
 ## Project layout
 
@@ -75,7 +104,13 @@ everything in it.
 
 ## Development
 
-- **Backend tests:** `cd backend && uv run pytest`
+- **Backend tests:** `cd backend && uv run pytest`. These cover accounts and sessions,
+  saved documents (including privacy between users), the chat endpoint with a fake Claude
+  client, `documents.json` against the templates, and the main flow from sign-up to a
+  finished document.
+- **Frontend tests:** `cd frontend && npm test` (Vitest). These cover the Standard Terms
+  parser on every template, the cover page model, and rendering every document type as
+  a PDF and a Word file.
 - **Frontend checks:** `cd frontend && npm run lint && npm run build`
 
 ## Accounts and data
@@ -103,3 +138,11 @@ edit the files and restart.
 To change a document's cover page fields, edit `documents.json` and restart the backend.
 The backend tests check that every term a template links to its cover page (such as
 "Subscription Period") has a matching field or party role.
+
+## Known limitations
+
+- No password reset or email verification yet, and no limit on repeated login attempts.
+  Put the app behind a rate-limiting proxy before exposing it to the internet.
+- Documents are in English and use US governing law, like the Common Paper templates.
+- The AI fills in the cover page only. Changes to the Standard Terms themselves go in a
+  modifications field where the document has one (the Mutual NDA), or in the Word file.

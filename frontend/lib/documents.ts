@@ -143,10 +143,11 @@ export function missingCount(cover: CoverPage) {
     .length;
 }
 
-export function pdfFileName(spec: DocumentSpec, state: DocumentState) {
+/** E.g. "Mutual-NDA_Acme-Inc_Globex-Corp.pdf". */
+export function downloadFileName(spec: DocumentSpec, state: DocumentState, extension: "pdf" | "docx") {
   const slug = (s: string) => s.trim().replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const parties = state.parties.map((p) => slug(p.company)).filter(Boolean);
-  return [slug(spec.shortName ?? spec.name), ...parties].join("_") + ".pdf";
+  return `${[slug(spec.shortName ?? spec.name), ...parties].join("_")}.${extension}`;
 }
 
 /**

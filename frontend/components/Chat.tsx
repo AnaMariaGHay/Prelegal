@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ui } from "@/lib/ui";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -33,19 +34,24 @@ export function Chat({ greeting, messages, sending, error, onSend, onRetry }: Pr
   const lastIsUnanswered = messages.at(-1)?.role === "user";
 
   return (
-    <section aria-label="Chat with the Prelegal assistant" className="flex h-full min-h-[28rem] flex-col rounded-lg bg-white ring-1 ring-zinc-200">
+    <section aria-label="Chat with the Prelegal assistant" className={`${ui.card} flex h-full min-h-[24rem] flex-col`}>
       <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
         <Bubble role="assistant" content={greeting} />
         {messages.map((m, i) => (
           <Bubble key={i} role={m.role} content={m.content} />
         ))}
         {sending && (
-          <p className="text-sm text-zinc-500" role="status">
+          <p className="flex items-center gap-2 text-sm text-zinc-500" role="status">
+            <span className="flex gap-1" aria-hidden>
+              <span className="size-1.5 animate-bounce rounded-full bg-zinc-400" />
+              <span className="size-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:150ms]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:300ms]" />
+            </span>
             Thinking…
           </p>
         )}
         {error && (
-          <div role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">
+          <div role="alert" className={ui.errorBox}>
             <p>{error}</p>
             {lastIsUnanswered && !sending && (
               <button type="button" onClick={onRetry} className="mt-2 font-semibold underline">
@@ -71,12 +77,12 @@ export function Chat({ greeting, messages, sending, error, onSend, onRetry }: Pr
           }}
           maxLength={4000}
           placeholder="Type your answer… (Enter to send, Shift+Enter for a new line)"
-          className="flex-1 resize-none rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600"
+          className={`${ui.input} flex-1 resize-none`}
         />
         <button
           type="submit"
           disabled={sending || !input.trim()}
-          className="self-end rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
+          className={`${ui.primaryButton} self-end`}
         >
           Send
         </button>

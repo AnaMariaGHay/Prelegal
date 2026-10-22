@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { DraftSummary } from "@/lib/api";
+import { ui } from "@/lib/ui";
 
 /** The user's documents, with links to continue them and a delete button each. */
 export function DraftList({ drafts: initial }: { drafts: DraftSummary[] }) {
@@ -19,9 +20,9 @@ export function DraftList({ drafts: initial }: { drafts: DraftSummary[] }) {
 
   if (drafts.length === 0)
     return (
-      <div className="mt-6 rounded-lg bg-white p-8 text-center ring-1 ring-zinc-200">
+      <div className={`${ui.card} mt-6 p-8 text-center`}>
         <p className="font-medium text-zinc-900">You haven’t created any documents yet.</p>
-        <p className="mt-1 text-sm text-zinc-600">
+        <p className={`mt-1 ${ui.muted}`}>
           Start a new document and the assistant will guide you through it. Your progress is saved as you go.
         </p>
       </div>
@@ -30,11 +31,11 @@ export function DraftList({ drafts: initial }: { drafts: DraftSummary[] }) {
   return (
     <>
       {error && (
-        <p role="alert" className="mt-6 rounded-md bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">
+        <p role="alert" className={`${ui.errorBox} mt-6`}>
           {error}
         </p>
       )}
-      <ul className="mt-6 divide-y divide-zinc-200 rounded-lg bg-white ring-1 ring-zinc-200">
+      <ul className={`${ui.card} mt-6 divide-y divide-zinc-200`}>
         {drafts.map((draft) => (
           <li key={draft.id} className="flex items-center gap-3 p-4">
             <Link
@@ -54,7 +55,7 @@ export function DraftList({ drafts: initial }: { drafts: DraftSummary[] }) {
               type="button"
               onClick={() => remove(draft)}
               aria-label={`Delete ${draft.title}`}
-              className="rounded-md px-3 py-1.5 text-sm font-semibold text-red-700 ring-1 ring-zinc-300 hover:bg-red-50"
+              className={`${ui.dangerButton} px-3 py-1.5`}
             >
               Delete
             </button>
